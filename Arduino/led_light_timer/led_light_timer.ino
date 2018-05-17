@@ -7,14 +7,14 @@ extern "C" {
 #include "user_interface.h"
 }
  
-const char* ssid = "0024A5B34C9D";
-const char* password = "k2ueeia979ys7";
+const char* ssid = "XXXXXXXXXXXX";
+const char* password = "XXXXXXXXXXXXX";
 long sleepTime = 1;
 
 byte operatingMode = INIT_MODE;
 
-unsigned int channelId = 3811;
-const char* writeKey = "15ee6fea5150a859";
+unsigned int channelId = 1111;
+const char* writeKey = "XXXXXXXXXXXXX";
 WiFiClient client;
 Ambient ambient;
 

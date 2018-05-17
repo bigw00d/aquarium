@@ -7,8 +7,8 @@
 #include "HwTimer1.h"
 #include "SdWriter.h"
 
-const char* ssid = "0024A5B34C9D";
-const char* password = "k2ueeia979ys7";
+const char* ssid = "XXXXXXXXXXXX";
+const char* password = "XXXXXXXXXXXXX";
 
 ESP8266WebServer server(80);
 
