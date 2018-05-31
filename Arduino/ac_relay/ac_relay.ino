@@ -6,16 +6,44 @@
 #include <NTP.h>
 #include "HwTimer1.h"
 #include "SdWriter.h"
+#include "Ambient.h"
 extern "C" {
 #include "user_interface.h"
 }
 
-const char* ssid = "0024A5B34C9D";
-const char* password = "k2ueeia979ys7";
+const char* ssid = "XXXX";
+const char* password = "XXXX";
 
 ESP8266WebServer server(80);
 
 const int led = 13;
+
+#define ADV_TEMP10 (800)
+#define ADV_TEMP30 (402)
+
+unsigned int channelId = 0000;
+const char* writeKey = "XXXX";
+WiFiClient wifiAmbientClient;
+Ambient ambient;
+int ambientFlg = -1;
+int ADC_Value = 0;
+typedef enum {
+      eTEMP_LESSTHAN_10 = 0
+    , eTEMP_10_30
+    , eTEMP_MORETHAN_30
+} eTEMP_SECTION;
+const float temp_slope[3] =
+{
+-25.54347826, // ...10℃
+-16.44171779, // 10℃...30℃
+-10.57553957 // 30℃...
+};
+const float temp_intercept[3] =
+{
+1007.173913, // ...10℃
+887.0306748, // 10℃...30℃
+713.9784173 // 30℃...
+};
 
 void ICACHE_RAM_ATTR TimerRoutine();
 void display();
@@ -50,13 +78,33 @@ bool checkLightOn(int now_hour, int start_hour, int end_hour) {
   return ret;
 }
 
+void AmbientSend()
+{
+    if(ambientFlg > 0) {
+      DEBUG_PRINTLN("AmbientSend");
+      int temp_section = eTEMP_10_30;
+      if(ADC_Value > ADV_TEMP10) {
+        temp_section = eTEMP_LESSTHAN_10;
+      }
+      else if(ADC_Value < ADV_TEMP30) {
+        temp_section = eTEMP_MORETHAN_30;
+      }
+      float fADC_Value = (float)ADC_Value;
+      float temp = (fADC_Value - temp_intercept[temp_section]) / temp_slope[temp_section];
+      ambient.set(1, temp);// if data type is int or float, I can input raw value.
+      ambient.send();
+      ambientFlg = -1;
+    }
+}
+
 void ICACHE_RAM_ATTR TimerRoutine()
 {
     DEBUG_PRINTLN("RoutineTimerWork");
 
     //exe adc
-    uint ADC_Value = 0;
+    ADC_Value = 0;
     ADC_Value = system_adc_read();
+    ambientFlg = 1;
 
     //debug out adc result(0-1024)
     DEBUG_PRINTLN("=======ANALOG " + String(ADC_Value) + "ANALOG ");
@@ -269,6 +317,10 @@ void setup(void){
 
   SD_init();
 
+  ambientFlg = -1;
+  //WiFiClient client = server.client();
+  ambient.begin(channelId, writeKey, &wifiAmbientClient);
+
   TimerRoutine();
   HwTimer1_Start(UPDATE_INTERVAL_SEC, TimerRoutine);
 
@@ -316,4 +368,6 @@ void display(){
 
 void loop(void){
   server.handleClient();
+  AmbientSend();
+
 }
