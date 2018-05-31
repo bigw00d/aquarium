@@ -6,9 +6,12 @@
 #include <NTP.h>
 #include "HwTimer1.h"
 #include "SdWriter.h"
+extern "C" {
+#include "user_interface.h"
+}
 
-const char* ssid = "XXXXXXXXXXXX";
-const char* password = "XXXXXXXXXXXXX";
+const char* ssid = "0024A5B34C9D";
+const char* password = "k2ueeia979ys7";
 
 ESP8266WebServer server(80);
 
@@ -50,6 +53,14 @@ bool checkLightOn(int now_hour, int start_hour, int end_hour) {
 void ICACHE_RAM_ATTR TimerRoutine()
 {
     DEBUG_PRINTLN("RoutineTimerWork");
+
+    //exe adc
+    uint ADC_Value = 0;
+    ADC_Value = system_adc_read();
+
+    //debug out adc result(0-1024)
+    DEBUG_PRINTLN("=======ANALOG " + String(ADC_Value) + "ANALOG ");
+
     String strJst = "";
     time_t t_jst;
     t_jst = getJst(&strJst);
@@ -69,6 +80,7 @@ void ICACHE_RAM_ATTR TimerRoutine()
       SD_writeLine(&strMessage);
       digitalWrite(PIN_ACOUT, LOW);   // AC OUT on
     }
+
 }
 
 void handleRoot() {
