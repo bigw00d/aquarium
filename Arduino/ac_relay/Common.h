@@ -9,5 +9,7 @@
   #define END_TIME_HOUR (20)
   #define PIN_ACOUT 5  //IO5
   #define LOGFILE_NAME "log.txt"
+  #define CSVFILE_NAME "save.csv"
+  #define CSV_COUNT_MAX (2)
 #endif //COMMON_H
 

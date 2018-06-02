@@ -81,7 +81,18 @@ bool checkLightOn(int now_hour, int start_hour, int end_hour) {
 void AmbientSend()
 {
     if(ambientFlg > 0) {
+      if(SD_countUpCsv() >= CSV_COUNT_MAX) {
       DEBUG_PRINTLN("AmbientSend");
+        SD_initCsv();
+
+        ADC_Value = 0;
+        ADC_Value = system_adc_read();        
+        ADC_Value += system_adc_read();        
+        ADC_Value += system_adc_read(); 
+        ADC_Value /= 3;       
+        //debug out adc result(0-1024)
+        DEBUG_PRINTLN("=======ANALOG " + String(ADC_Value) + "ANALOG ");
+        
       int temp_section = eTEMP_10_30;
       if(ADC_Value > ADV_TEMP10) {
         temp_section = eTEMP_LESSTHAN_10;
@@ -91,8 +102,10 @@ void AmbientSend()
       }
       float fADC_Value = (float)ADC_Value;
       float temp = (fADC_Value - temp_intercept[temp_section]) / temp_slope[temp_section];
+        DEBUG_PRINTLN("temp:" + String(temp));
       ambient.set(1, temp);// if data type is int or float, I can input raw value.
       ambient.send();
+      }    
       ambientFlg = -1;
     }
 }
@@ -102,12 +115,7 @@ void ICACHE_RAM_ATTR TimerRoutine()
     DEBUG_PRINTLN("RoutineTimerWork");
 
     //exe adc
-    ADC_Value = 0;
-    ADC_Value = system_adc_read();
     ambientFlg = 1;
-
-    //debug out adc result(0-1024)
-    DEBUG_PRINTLN("=======ANALOG " + String(ADC_Value) + "ANALOG ");
 
     String strJst = "";
     time_t t_jst;

@@ -33,6 +33,12 @@ void SD_closeWriteFile();
 
 void SD_writeFile(const uint8_t *buf, size_t size);
 
+int16_t SD_writeCsv(bool clear);
+
+void SD_initCsv();
+
+int16_t SD_countUpCsv();
+
 /*
 void SD_handleNotFound();
 
