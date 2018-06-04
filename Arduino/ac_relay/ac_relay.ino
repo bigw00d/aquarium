@@ -17,6 +17,7 @@ const char* password = "XXXX";
 ESP8266WebServer server(80);
 
 const int led = 13;
+const int coolerFan = 16;
 
 #define ADV_TEMP10 (800)
 #define ADV_TEMP30 (402)
@@ -25,7 +26,7 @@ unsigned int channelId = 0000;
 const char* writeKey = "XXXX";
 WiFiClient wifiAmbientClient;
 Ambient ambient;
-int ambientFlg = -1;
+int timerEventFlg = -1;
 int ADC_Value = 0;
 typedef enum {
       eTEMP_LESSTHAN_10 = 0
@@ -48,7 +49,7 @@ const float temp_intercept[3] =
 void ICACHE_RAM_ATTR TimerRoutine();
 void display();
 
-bool checkLightOn(int now_hour, int start_hour, int end_hour) {
+bool checkOnTime(int now_hour, int start_hour, int end_hour) {
   bool ret = false;  
 
   if(end_hour < start_hour) { //ex. 13:00(start) -> 2:00(end)
@@ -78,13 +79,22 @@ bool checkLightOn(int now_hour, int start_hour, int end_hour) {
   return ret;
 }
 
-void AmbientSend()
+void FanCtrl(float temp)
 {
-    if(ambientFlg > 0) {
-      if(SD_countUpCsv() >= CSV_COUNT_MAX) {
-      DEBUG_PRINTLN("AmbientSend");
-        SD_initCsv();
+    if(temp >= FAN_ON_TEMPERATURE) {      
+      DEBUG_PRINTLN("Fan On");
+      digitalWrite(coolerFan, HIGH);   // Fan on
+    }
+    else {
+      DEBUG_PRINTLN("Fan Off");
+      digitalWrite(coolerFan, LOW);   // Fan off
+    }
+  
+}
 
+float AmbientSend()
+{
+    DEBUG_PRINTLN("AmbientSend");
         ADC_Value = 0;
         ADC_Value = system_adc_read();        
         ADC_Value += system_adc_read();        
@@ -105,8 +115,19 @@ void AmbientSend()
         DEBUG_PRINTLN("temp:" + String(temp));
       ambient.set(1, temp);// if data type is int or float, I can input raw value.
       ambient.send();
+
+    return temp;
+}
+
+void AquaCtrlAtTimerEvent()
+{
+    if(timerEventFlg > 0) {
+      if(SD_countUpCsv() >= CSV_COUNT_MAX) {
+        SD_initCsv();
+        float temp = AmbientSend();
+        FanCtrl(temp);
       }    
-      ambientFlg = -1;
+      timerEventFlg = -1;      
     }
 }
 
@@ -114,17 +135,16 @@ void ICACHE_RAM_ATTR TimerRoutine()
 {
     DEBUG_PRINTLN("RoutineTimerWork");
 
-    //exe adc
-    ambientFlg = 1;
+    timerEventFlg = 1;
 
     String strJst = "";
     time_t t_jst;
     t_jst = getJst(&strJst);
     SD_writeLine(&strJst);
 
-    bool needLightOn = checkLightOn(hour(t_jst), START_TIME_HOUR, END_TIME_HOUR);
+    bool lightIsOn = checkOnTime(hour(t_jst), LIGHT_START_TIME_HOUR, LIGHT_END_TIME_HOUR);
     String strMessage = "";
-    if(needLightOn) {      
+    if(lightIsOn) {      
       strMessage = "Light On";
       DEBUG_PRINTLN("Light On");
       SD_writeLine(&strMessage);
@@ -134,7 +154,7 @@ void ICACHE_RAM_ATTR TimerRoutine()
       strMessage = "Light Off";
       DEBUG_PRINTLN("Light Off");
       SD_writeLine(&strMessage);
-      digitalWrite(PIN_ACOUT, LOW);   // AC OUT on
+      digitalWrite(PIN_ACOUT, LOW);   // AC OUT off
     }
 
 }
@@ -277,7 +297,10 @@ void printDirectory() {
 
 void setup(void){
   pinMode(led, OUTPUT);
+  pinMode(coolerFan, OUTPUT);
   digitalWrite(led, 0);
+  digitalWrite(coolerFan, 0);
+
   Serial.begin(115200);
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
@@ -325,7 +348,7 @@ void setup(void){
 
   SD_init();
 
-  ambientFlg = -1;
+  timerEventFlg = -1;
   //WiFiClient client = server.client();
   ambient.begin(channelId, writeKey, &wifiAmbientClient);
 
@@ -376,6 +399,5 @@ void display(){
 
 void loop(void){
   server.handleClient();
-  AmbientSend();
-
+  AquaCtrlAtTimerEvent();
 }
